@@ -21,7 +21,7 @@ class Tag(BaseModel):
 
 
 class Product(BaseModel):
-    name = peewee.CharField(max_length=20)
+    name = peewee.CharField(max_length=20, default="")
     description = peewee.CharField(max_length=100)
     price = peewee.DecimalField(max_digits=10, decimal_places=2)
     quantity_in_stock = peewee.IntegerField(
@@ -34,7 +34,6 @@ class Product(BaseModel):
 class Transaction(BaseModel):
     user = peewee.ForeignKeyField(User, backref="transaction_id")
     product = peewee.ForeignKeyField(Product, backref="name")
-    id = peewee.AutoField(primary_key=True)
     date = peewee.DateField()
     products_purchased = peewee.IntegerField(
         constraints=[peewee.Check("products_purchased >= 0")]
