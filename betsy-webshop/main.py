@@ -8,9 +8,9 @@ import models
 
 
 def search(term):
-    term = term.lower
+    term = term.lower()
     products = models.Product.select().where(
-        peewee.fn.Lower(models.Product.name).contraints(term)
+        peewee.fn.Lower(models.Product.name).contains(term)
     )
 
     for product in products:
