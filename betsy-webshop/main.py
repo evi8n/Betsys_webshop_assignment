@@ -6,9 +6,18 @@ __human_name__ = "Betsy Webshop"
 import peewee
 import models
 from rapidfuzz import fuzz
+from datetime import datetime
 
 
 def search(term):
+    """
+    Allows users to search for products by providing a search term,
+    which can be the name or the description of the product.
+    By performing a fuzzy search it returns the search result
+    that comes closer to the provided term, so some spelling mistakes
+    are allowed.
+    Returns all details of the product.
+    """
     term = term.lower()
     products = models.Product.select()
 
@@ -35,9 +44,12 @@ def search(term):
         print("No matching products found.")
 
 
-def list_user_products(user_id):
+def list_user_products(username):
+    """
+    Returns a list of the products that the provided user owns.
+    """
     try:
-        user = models.Buyer.get(models.Buyer.username == user_id)
+        user = models.Buyer.get(models.Buyer.username == username)
         user_products = user.owned_products
 
         if user_products:
@@ -54,6 +66,11 @@ def list_user_products(user_id):
 
 
 def list_products_per_tag(tag_id):
+    """
+    lists products associated with a specific tag identified
+    by its tag_id. It returns the details of the products that have been
+    tagged with the specified tag.
+    """
     try:
         tag = models.Tag.get(models.Tag.name == tag_id)
 
@@ -77,13 +94,20 @@ def list_products_per_tag(tag_id):
         print("Tag was not found.")
 
 
-def add_product_to_catalog(user_id, product_name):
+def add_product_to_catalog(username, product_name):
+    """
+    Allows the user identified by their username to add a specific product
+    to their catalog of owned products.
+    It checks if the product with the given product_name
+    exists in the database and,
+    if it does, associates it with the user.
+    """
     products = models.Product.select()
 
     for product in products:
         if product.product_name.lower() == product_name.lower():
             try:
-                user = models.Buyer.get(models.Buyer.username == user_id)
+                user = models.Buyer.get(models.Buyer.username == username)
                 user.owned_products.add(product)
 
                 print(
@@ -94,6 +118,12 @@ def add_product_to_catalog(user_id, product_name):
 
 
 def update_stock(product_name, new_quantity):
+    """
+    Enables the update of the stock quantity
+    for a specific product identified by its product_name.
+    It retrieves the product and sets its quantity in stock
+    to the new quantity provided.
+    """
     try:
         product = models.Product.get(models.Product.product_name == product_name)
 
@@ -107,6 +137,13 @@ def update_stock(product_name, new_quantity):
 
 
 def purchase_product(product_name, username, quantity):
+    """
+    Allows the user identified by their username
+    to purchase a specific quantity of a product.
+    It checks if the product is in stock and records the transaction,
+    deducts the purchased quantity from the product's stock
+    and calculates the total purchase price.
+    """
     try:
         product = models.Product.get(models.Product.product_name == product_name)
         buyer = models.Buyer.get(models.Buyer.username == username)
@@ -120,9 +157,10 @@ def purchase_product(product_name, username, quantity):
             transaction = models.Transaction.create(
                 user=buyer,
                 product=product,
-                date=peewee.fn.datetime("now"),
+                date=datetime.now(),
                 products_purchased=quantity,
             )
+            buyer.owned_products.add(product)
 
             print(
                 f"Purchase successful! {quantity} pieces of '{product.product_name}' purchased for €{total_price}."
@@ -137,6 +175,11 @@ def purchase_product(product_name, username, quantity):
 
 
 def remove_product(username, product_name):
+    """
+    Allows a user identified by their username
+    to remove a specific product identified
+    by its product_name from their catalog of owned products.
+    """
     try:
         user = models.Buyer.get(models.Buyer.username == username)
 
@@ -157,7 +200,7 @@ def remove_product(username, product_name):
         print(f"Product '{product_name}' was not found.")
 
 
-"""def populate_test_database():
+def populate_test_database():
     example_user1 = models.Buyer.create(
         username="Anita89",
         name="Anita Aniton",
@@ -190,10 +233,10 @@ def remove_product(username, product_name):
         quantity_in_stock=60,
     )
     product4 = models.Product.create(
-    product_name="Hat",
-    description="Hat for the head",
-    price=6.49,
-    quantity_in_stock=20,
+        product_name="Hat",
+        description="Hat for the head",
+        price=6.49,
+        quantity_in_stock=20,
     )
 
     product1.owners.add(example_user1)
@@ -220,14 +263,4 @@ def remove_product(username, product_name):
         products_purchased=2,
     )
 
-    print("Test data populated.")"""
-
-# populate_test_database()
-# search("Bottle of shampoo")
-# add_product_to_catalog("Anita89", "Hat")
-# list_products_per_tag("Tag1")
-# list_user_products("Peter12")
-# update_stock("Shampoo", 57)
-# purchase_product("Hat", "Peter12", 2)
-
-remove_product("Peter12", "Shampoo")
+    print("Test data populated.")
