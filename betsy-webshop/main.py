@@ -15,22 +15,19 @@ def search(term):
     matching_products = []
 
     for product in products:
-        product_name = product.name.lower()
+        product_name = product.product_name.lower()
         product_description = product.description.lower()
 
-        # Calculate a fuzzy match score for both name and description
         name_score = fuzz.ratio(term, product_name)
         description_score = fuzz.ratio(term, product_description)
 
-        # You can adjust the threshold score as needed
-        # Here, we're considering a product a match if either name or description has a score of at least 70
         if name_score >= 70 or description_score >= 70:
             matching_products.append(product)
 
     if matching_products:
         for product in matching_products:
             print(f"Product ID: {product.id}.")
-            print(f"Product Name: {product.name}")
+            print(f"Product Name: {product.product_name}")
             print(f"Description: {product.description}")
             print(f"Price: {product.price}")
             print(f"Quantity in Stock: {product.quantity_in_stock}")
@@ -49,7 +46,6 @@ def list_user_products(user_id):
                 print(f"Product Name: {product.product_name}")
                 print(f"Description: {product.description}")
                 print(f"Price: {product.price}")
-                print(f"Quantity in Stock: {product.quantity_in_stock}")
         else:
             print("User owns no products.")
 
@@ -81,21 +77,25 @@ def list_products_per_tag(tag_id):
         print("Tag was not found.")
 
 
-def add_product_to_catalog(user_id, product):
+def add_product_to_catalog(user_id, product_name):
+    products = models.Product.select()
+
+    for product in products:
+        if product.product_name.lower() == product_name.lower():
+            try:
+                user = models.Buyer.get(models.Buyer.username == user_id)
+                user.owned_products.add(product)
+
+                print(
+                    f"Added product '{product.product_name}' to the catalogue of {user.username}."
+                )
+            except models.Buyer.DoesNotExist:
+                print("User was not found.")
+
+
+def update_stock(product_name, new_quantity):
     try:
-        user = models.Buyer.get(models.Buyer.username == user_id)
-        user.owned_products.add(product)
-
-        print(
-            f"Added product '{product.product_name}' to the catalogue of {user.username}."
-        )
-    except models.Buyer.DoesNotExist:
-        print("User was not found.")
-
-
-def update_stock(product_id, new_quantity):
-    try:
-        product = models.Product.get(models.Product.id == product_id)
+        product = models.Product.get(models.Product.product_name == product_name)
 
         product.quantity_in_stock = new_quantity
         product.save()
@@ -106,10 +106,10 @@ def update_stock(product_id, new_quantity):
         print("Product not found.")
 
 
-def purchase_product(product_id, buyer_id, quantity):
+def purchase_product(product_name, username, quantity):
     try:
-        product = models.Product.get(models.Product.id == product_id)
-        buyer = models.Buyer.get(models.Buyer.username == buyer_id)
+        product = models.Product.get(models.Product.product_name == product_name)
+        buyer = models.Buyer.get(models.Buyer.username == username)
 
         if product.quantity_in_stock >= quantity:
             total_price = product.price * quantity
@@ -120,12 +120,12 @@ def purchase_product(product_id, buyer_id, quantity):
             transaction = models.Transaction.create(
                 user=buyer,
                 product=product,
-                date=peewee.fn.Now(),
+                date=peewee.fn.datetime("now"),
                 products_purchased=quantity,
             )
 
             print(
-                f"Purchase successful! {quantity} units of '{product.product_name}' purchased for ${total_price}."
+                f"Purchase successful! {quantity} pieces of '{product.product_name}' purchased for €{total_price}."
             )
         else:
             print(
@@ -136,19 +136,28 @@ def purchase_product(product_id, buyer_id, quantity):
         print("Product or buyer not found.")
 
 
-def remove_product(user_id, product):
+def remove_product(username, product_name):
     try:
-        user = models.Buyer.get(models.Buyer.username == user_id)
-        user.owned_products.remove(product)
+        user = models.Buyer.get(models.Buyer.username == username)
 
-        print(
-            f"Removed product '{product.product_name}' from the catalogue of {user.username}."
+        product = models.Product.get(
+            peewee.fn.Lower(models.Product.product_name) == product_name.lower()
         )
+        if product in user.owned_products:
+            user.owned_products.remove(product)
+
+            print(
+                f"Removed product '{product_name}' from the catalogue of {user.username}."
+            )
+        else:
+            print(f"Product '{product_name}' is not owned by {user.username}.")
     except models.Buyer.DoesNotExist:
         print("User was not found.")
+    except models.Product.DoesNotExist:
+        print(f"Product '{product_name}' was not found.")
 
 
-def populate_test_database():
+"""def populate_test_database():
     example_user1 = models.Buyer.create(
         username="Anita89",
         name="Anita Aniton",
@@ -163,7 +172,7 @@ def populate_test_database():
     )
 
     product1 = models.Product.create(
-        product_name="So",
+        product_name="Soap",
         description="Bar of soap",
         price=12.99,
         quantity_in_stock=50,
@@ -175,10 +184,16 @@ def populate_test_database():
         quantity_in_stock=30,
     )
     product2 = models.Product.create(
-        product_name="Beer 0",
+        product_name="Beer",
         description="Beer in a bottle",
         price=8.99,
         quantity_in_stock=60,
+    )
+    product4 = models.Product.create(
+    product_name="Hat",
+    description="Hat for the head",
+    price=6.49,
+    quantity_in_stock=20,
     )
 
     product1.owners.add(example_user1)
@@ -205,25 +220,14 @@ def populate_test_database():
         products_purchased=2,
     )
 
-    print("Test data populated.")
-
-
-user_id = "Peter12"
-product3 = models.Product.create(
-    product_name="Shampoo",
-    description="Bottle of shampoo",
-    price=8.49,
-    quantity_in_stock=30,
-)
+    print("Test data populated.")"""
 
 # populate_test_database()
-# add_product_to_catalog(user_id, product)
-
-# search("Soap")
-
+# search("Bottle of shampoo")
+# add_product_to_catalog("Anita89", "Hat")
 # list_products_per_tag("Tag1")
-# add_product_to_catalog("Peter12", "Soap")
-
 # list_user_products("Peter12")
+# update_stock("Shampoo", 57)
+# purchase_product("Hat", "Peter12", 2)
 
-# update_stock("Shampoo", 54)
+remove_product("Peter12", "Shampoo")
