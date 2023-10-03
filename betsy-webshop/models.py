@@ -49,6 +49,7 @@ class Transaction(BaseModel):
 ProductBuyer = Product.owners.get_through_model()
 ProductTag = Product.tags.get_through_model()
 
-db.connect()
 
-db.create_tables([Buyer, Product, Transaction, Tag, ProductBuyer, ProductTag])
+def initialize_database():
+    db.connect()
+    db.create_tables([Buyer, Product, Transaction, Tag, ProductBuyer, ProductTag])
