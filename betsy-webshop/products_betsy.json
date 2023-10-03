@@ -1,0 +1,23 @@
+[
+    {
+        "product_name": "Guitar",
+        "description": "Acoustic guitar",
+        "price": 119.99,
+        "quantity_in_stock": 10,
+        "tags": "Entertainment"
+    },
+    {
+        "product_name": "Notepad",
+        "description": "Writing notepad",
+        "price": 4.99,
+        "quantity_in_stock": 100,
+        "tags": "Entertainment"
+    },
+    {
+        "product_name": "Candy",
+        "description": "Candy for energy",
+        "price": 3.99,
+        "quantity_in_stock": 100,
+        "tags": "Food & Drink"
+    }
+]

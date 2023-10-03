@@ -1,0 +1,14 @@
+[
+    {
+        "username": "Johnny",
+        "name": "Johnny Cash",
+        "address": "12 Music Street",
+        "billing_info": "Credit Card"
+    },
+    {
+        "username": "Maria",
+        "name": "Maria Maraki",
+        "address": "4 Apple Road",
+        "billing_info": "PayPal"
+    }
+]
