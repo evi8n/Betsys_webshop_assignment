@@ -5,8 +5,31 @@ __human_name__ = "Betsy Webshop"
 # Add your code after this line
 import peewee
 import models
+from models import initialize_database
 from rapidfuzz import fuzz
 from datetime import datetime
+import os
+import json
+
+
+def main():
+    """
+    Function to test program
+    """
+    if os.path.exists("betsy_database.db") == False:
+        initialize_database()
+        populate_test_database()
+
+    # search("Bottle of shampoo")
+    # add_product_to_user_list("Johnny", "gUITAR")
+    # list_products_per_tag("misc")
+    # list_user_products("Johnny")
+    # update_stock("Shampoo", 17)
+    # user_purchase_product("Hat", "Anita89", 2)
+    # remove_product_from_user_list("Peter12", "Hat")
+    # add_new_user()
+    add_new_product()
+    # remove_product_from_database(11)
 
 
 def search(term):
@@ -44,12 +67,12 @@ def search(term):
         print("No matching products found.")
 
 
-def list_user_products(username):
+def list_user_products(user_id):
     """
     Returns a list of the products that the provided user owns.
     """
     try:
-        user = models.Buyer.get(models.Buyer.username == username)
+        user = models.Buyer.get(models.Buyer.username == user_id)
         user_products = user.owned_products
 
         if user_products:
@@ -72,7 +95,7 @@ def list_products_per_tag(tag_id):
     tagged with the specified tag.
     """
     try:
-        tag = models.Tag.get(models.Tag.name == tag_id)
+        tag = models.Tag.get(models.Tag.name == tag_id.lower())
 
         tagged_products = (
             models.Product.select()
@@ -94,7 +117,7 @@ def list_products_per_tag(tag_id):
         print("Tag was not found.")
 
 
-def add_product_to_catalog(username, product_name):
+def add_product_to_user_list(user_id, product_id):
     """
     Allows the user identified by their username to add a specific product
     to their catalog of owned products.
@@ -105,9 +128,9 @@ def add_product_to_catalog(username, product_name):
     products = models.Product.select()
 
     for product in products:
-        if product.product_name.lower() == product_name.lower():
+        if product.product_name.lower() == product_id.lower():
             try:
-                user = models.Buyer.get(models.Buyer.username == username)
+                user = models.Buyer.get(models.Buyer.username == user_id)
                 user.owned_products.add(product)
 
                 print(
@@ -117,7 +140,7 @@ def add_product_to_catalog(username, product_name):
                 print("User was not found.")
 
 
-def update_stock(product_name, new_quantity):
+def update_stock(product_id, new_quantity):
     """
     Enables the update of the stock quantity
     for a specific product identified by its product_name.
@@ -125,7 +148,7 @@ def update_stock(product_name, new_quantity):
     to the new quantity provided.
     """
     try:
-        product = models.Product.get(models.Product.product_name == product_name)
+        product = models.Product.get(models.Product.product_name == product_id)
 
         product.quantity_in_stock = new_quantity
         product.save()
@@ -136,7 +159,7 @@ def update_stock(product_name, new_quantity):
         print("Product not found.")
 
 
-def purchase_product(product_name, username, quantity):
+def user_purchase_product(product_id, user_id, quantity):
     """
     Allows the user identified by their username
     to purchase a specific quantity of a product.
@@ -145,8 +168,8 @@ def purchase_product(product_name, username, quantity):
     and calculates the total purchase price.
     """
     try:
-        product = models.Product.get(models.Product.product_name == product_name)
-        buyer = models.Buyer.get(models.Buyer.username == username)
+        product = models.Product.get(models.Product.product_name == product_id)
+        buyer = models.Buyer.get(models.Buyer.username == user_id)
 
         if product.quantity_in_stock >= quantity:
             total_price = product.price * quantity
@@ -163,7 +186,7 @@ def purchase_product(product_name, username, quantity):
             buyer.owned_products.add(product)
 
             print(
-                f"Purchase successful! {quantity} pieces of '{product.product_name}' purchased for €{total_price}."
+                f"Purchase successful! {quantity} pieces of product '{product.product_id}' purchased for €{total_price}."
             )
         else:
             print(
@@ -174,30 +197,172 @@ def purchase_product(product_name, username, quantity):
         print("Product or buyer not found.")
 
 
-def remove_product(username, product_name):
+def remove_product_from_user_list(user_id, product_id):
     """
     Allows a user identified by their username
     to remove a specific product identified
     by its product_name from their catalog of owned products.
     """
     try:
-        user = models.Buyer.get(models.Buyer.username == username)
+        user = models.Buyer.get(models.Buyer.username == user_id)
 
         product = models.Product.get(
-            peewee.fn.Lower(models.Product.product_name) == product_name.lower()
+            peewee.fn.Lower(models.Product.product_name) == product_id.lower()
         )
         if product in user.owned_products:
             user.owned_products.remove(product)
 
             print(
-                f"Removed product '{product_name}' from the catalogue of {user.username}."
+                f"Removed product '{product_id}' from the catalogue of {user.username}."
             )
         else:
-            print(f"Product '{product_name}' is not owned by {user.username}.")
+            print(f"Product '{product_id}' is not owned by {user.username}.")
     except models.Buyer.DoesNotExist:
         print("User was not found.")
     except models.Product.DoesNotExist:
-        print(f"Product '{product_name}' was not found.")
+        print(f"Product '{product_id}' was not found.")
+
+
+def add_new_user():
+    # Allows the user to add a list of new users from a JSON file
+    # or to add a user manually by inputting their info
+    print("Choose how to add a new user:")
+    print("1. Enter user data interactively")
+    print("2. Import user data from a file")
+
+    choice = input("Enter your choice (1/2): ")
+
+    if choice == "1":
+        username = input("Enter username: ")
+        name = input("Enter name: ")
+        address = input("Enter address: ")
+        billing_info = input("Enter billing info: ")
+
+        # Use the user-provided data to create a new user
+        new_user = models.Buyer.create(
+            username=username,
+            name=name,
+            address=address,
+            billing_info=billing_info,
+        )
+        print("User added successfully!")
+
+    elif choice == "2":
+        file_path = input("Enter the path to the user data file (e.g., users.json): ")
+        try:
+            with open(file_path, "r") as file:
+                user_data = json.load(file)
+                if isinstance(user_data, list):
+                    for data in user_data:
+                        # Use data from the file to create new users
+                        new_user = models.Buyer.create(
+                            username=data["username"],
+                            name=data["name"],
+                            address=data["address"],
+                            billing_info=data["billing_info"],
+                        )
+                    print(f"{len(user_data)} users added successfully!")
+                else:
+                    print(
+                        "Invalid file format. Please provide a JSON array of user data."
+                    )
+
+        except FileNotFoundError:
+            print("File not found. Please provide a valid file path.")
+        except json.JSONDecodeError:
+            print("Error decoding JSON data in the file.")
+
+    else:
+        print("Invalid choice. Please choose '1' or '2'.")
+
+
+def add_new_product():
+    # Allows the user to add a new product to the existing database
+    # from a JSON file
+    # or manually by asking for user input
+    print("Choose how to add a new product:")
+    print("1. Enter product data interactively")
+    print("2. Import product data from a file")
+
+    choice = input("Enter your choice (1/2): ")
+
+    if choice == "1":
+        name_of_new_product = input("Enter product name: ")
+        description = input("Enter product description: ")
+        price = float(input("Enter product price: "))
+        quantity_in_stock = int(input("Enter product quantity: "))
+
+        # Use the user-provided data to create a new product
+        new_product = models.Product.create(
+            product_name=name_of_new_product,
+            description=description,
+            price=price,
+            quantity_in_stock=quantity_in_stock,
+        )
+
+        add_tags_to_product(new_product)
+
+        print("Product added successfully!")
+
+    elif choice == "2":
+        file_path = input(
+            "Enter the path to the product data file (e.g., products.json): "
+        )
+        try:
+            with open(file_path, "r") as file:
+                product_data = json.load(file)
+                if isinstance(product_data, list):
+                    for data in product_data:
+                        # Use data from the file to create new products
+                        new_product = models.Product.create(
+                            product_name=data["product_name"],
+                            description=data["description"],
+                            price=data["price"],
+                            quantity_in_stock=data["quantity_in_stock"],
+                        )
+                    print(f"{len(product_data)} products added successfully!")
+                else:
+                    print(
+                        "Invalid file format. Please provide a JSON array of product data."
+                    )
+
+        except FileNotFoundError:
+            print("File not found. Please provide a valid file path.")
+        except json.JSONDecodeError:
+            print("Error decoding JSON data in the file.")
+
+    else:
+        print("Invalid choice. Please choose '1' or '2'.")
+
+
+def add_tags_to_product(new_product):
+    # Adds tags to a product, creating new tags if they don't exist
+    tags_input = input("Enter tags for the product (comma-separated): ")
+    tag_names = [tag.strip() for tag in tags_input.split(",")]
+
+    for tag_name in tag_names:
+        tag_name = tag_name.strip().lower()  # Convert tag_name to lowercase
+        try:
+            tag = models.Tag.get(models.Tag.name == tag_name)
+        except models.Tag.DoesNotExist:
+            # If the tag doesn't exist, create a new one
+            tag = models.Tag.create(name=tag_name)
+
+        # Add the tag to the product
+        new_product.tags.add(tag)
+
+
+def remove_product_from_database(product_id):
+    try:
+        # Find the product by its primary key (ID)
+        product = models.Product.get_by_id(product_id)
+
+        # Delete the product from the database
+        product.delete_instance()
+
+        print(f"Product '{product.product_name}' removed from the database.")
+    except models.Product.DoesNotExist:
+        print(f"Product with ID {product_id} not found in the database.")
 
 
 def populate_test_database():
@@ -220,17 +385,17 @@ def populate_test_database():
         price=12.99,
         quantity_in_stock=50,
     )
-    product3 = models.Product.create(
-        product_name="Shampoo",
-        description="Bottle of shampoo",
-        price=8.49,
-        quantity_in_stock=30,
-    )
     product2 = models.Product.create(
         product_name="Beer",
         description="Beer in a bottle",
         price=8.99,
         quantity_in_stock=60,
+    )
+    product3 = models.Product.create(
+        product_name="Shampoo",
+        description="Bottle of shampoo",
+        price=8.49,
+        quantity_in_stock=30,
     )
     product4 = models.Product.create(
         product_name="Hat",
@@ -238,17 +403,27 @@ def populate_test_database():
         price=6.49,
         quantity_in_stock=20,
     )
+    product5 = models.Product.create(
+        product_name="Book Title",
+        description="Book to read",
+        price=19.99,
+        quantity_in_stock="50",
+    )
 
     product1.owners.add(example_user1)
     product2.owners.add(example_user2)
+    product4.owners.add(example_user2)
 
-    tag1 = models.Tag.create(name="Tag1")
-    tag2 = models.Tag.create(name="Tag2")
+    tag1 = models.Tag.create(name="Personal care")
+    tag2 = models.Tag.create(name="Entertainment")
+    tag3 = models.Tag.create(name="Food & Drink")
+    tag4 = models.Tag.create(name="Clothing")
 
-    product1.tags.add(tag1)
-    product1.tags.add(tag2)
-    product2.tags.add(tag2)
+    product1.tags.add([tag1, tag2])
+    product2.tags.add(tag3)
     product3.tags.add(tag1)
+    product4.tags.add(tag4)
+    product5.tags.add(tag2)
 
     transaction1 = models.Transaction.create(
         user=example_user1,
@@ -264,3 +439,7 @@ def populate_test_database():
     )
 
     print("Test data populated.")
+
+
+if __name__ == "__main__":
+    main()
